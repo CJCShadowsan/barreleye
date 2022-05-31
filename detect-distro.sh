@@ -43,7 +43,7 @@ if which lsb_release >/dev/null 2>&1; then
 			PATCHLEVEL=$(sed -n -e 's/^PATCHLEVEL = //p' /etc/SuSE-release)
 			version="${version}.$PATCHLEVEL"
 		elif [ -f /etc/redhat-release ]; then
-			#name=$(head -1 /etc/redhat-release)
+			distroname=$(head -1 /etc/redhat-release)
 			name=rhel
 			version=$(echo "$distroname" |
 				sed -e 's/^[^0-9.]*//g' | sed -e 's/[ ].*//')
