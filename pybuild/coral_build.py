@@ -93,7 +93,7 @@ def download_dependent_rpms_rhel8(log, host, packages_dir,
     Download dependent RPMs for RHEL8
     """
     # pylint: disable=too-many-locals
-    command = ("dnf download --resolve --alldeps --destdir %s" %
+    command = ("dnf download --alldeps --destdir %s" %
                (packages_dir))
 
     for rpm_name in dependent_rpms:
@@ -136,33 +136,19 @@ def download_dependent_rpms_rhel8(log, host, packages_dir,
 
     exist_pattern = r"^\[SKIPPED\] (?P<rpm_fname>\S+): Already downloaded"
     exist_regular = re.compile(exist_pattern)
-    lines = retval.cr_stdout.splitlines()
+    output = retval.cr_stdout.splitlines()
+    lines = []
+    for line in output[:]:
+        match = exist_regular.match(line)
+        if match:
+            lines.append(match.group("rpm_fname"))
     if len(lines) == 0:
         log.cl_error("no line of command [%s] on host [%s], stdout = [%s]",
                      host.sh_hostname, command,
                      retval.cr_stdout)
         return -1
-    first_line = lines[0]
-    expected_prefix = "Last metadata expiration check:"
-    if not first_line.startswith(expected_prefix):
-        log.cl_error("unexpected first line [%s] of command [%s] on host "
-                     "[%s], stdout = [%s], expected prefix [%s]",
-                     first_line, host.sh_hostname, command,
-                     retval.cr_stdout,
-                     expected_prefix)
-        return -1
-    lines = lines[1:]
     for line in lines:
-        match = exist_regular.match(line)
-        if match:
-            rpm_fname = match.group("rpm_fname")
-        else:
-            log.cl_error("unknown stdout line [%s] of command [%s] on host "
-                         "[%s], stdout = [%s]",
-                         line, host.sh_hostname, command,
-                         retval.cr_stdout)
-            return -1
-        extra_package_fnames.append(rpm_fname)
+        extra_package_fnames.append(line)
     return 0
 
 
@@ -330,7 +316,7 @@ def install_build_dependency(log, workspace, host, distro, target_cpu,
         return -1
 
     dependent_pips = ["wheel"]  # Needed for pyinstaller
-    dependent_rpms = ["createrepo",  # To create the repo in ISO
+    dependent_rpms = ["createrepo_c",  # To create the repo in ISO
                       "e2fsprogs-devel",  # Needed for ./configure
                       "genisoimage",  # Generate the ISO image
                       "git",  # Needed by building anything from Git repository.
@@ -838,7 +824,7 @@ def build(log, source_dir, workspace,
 
     ret = install_build_dependency(log, workspace, local_host, distro,
                                    target_cpu, type_cache, plugins,
-                                    package_dict, build_pip_dir,
+                                   package_dict, build_pip_dir,
                                    tsinghua_mirror=tsinghua_mirror)
     if ret:
         log.cl_error("failed to install dependency for building")
